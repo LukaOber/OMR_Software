@@ -1,4 +1,6 @@
+from importlib.metadata import PackageNotFoundError
 import io
+import socket
 import os
 import PySimpleGUI as sg
 from PIL import Image
@@ -27,7 +29,7 @@ class GUIClass:
         mid_col = [[sg.Image(filename="", key='-MAIN IMAGE-')]]
 
         left_col = [[sg.Input(key='-LOAD EXCEL-', enable_events=True, visible=False)],
-                  [sg.FileBrowse(button_text="Load existing Excel file", target='-LOAD EXCEL-', size=(29,2), file_types = (('Excel *.xlsx', '*.xlsx'),), font=("Helvetica",13))],
+                  [sg.FileBrowse(button_text="Load Excel file", target='-LOAD EXCEL-', size=(29,2), file_types = (('Excel *.xlsx', '*.xlsx'),), font=("Helvetica",13))],
                   [sg.Text('No Excel file loaded', font="Helvetica 14", size=self.row_size, key="-EXCEL STATUS-", tooltip="", text_color="Red", justification="center")],
 
                   [sg.Text("")], 
@@ -42,10 +44,7 @@ class GUIClass:
                   [sg.Button('Solve all Sheets', font="Helvetica 14", size=self.row_size, key="-SOLVE SHEETS-", tooltip="")],
         ]
         right_col = [
-                    #[sg.Button('Solve Sheet', font="Helvetica 14", size=self.row_size, key="-SOLVE SHEET-", tooltip="")],
-                    #[sg.Text("")],
                     [sg.Image(filename="", key='-MAT IMAGE-')],
-                    #[sg.Input(default_text = "", size = (14, 2), font="Helvetica 14", key="-NUMBER INPUT-"), sg.Button('Check', font="Helvetica 12", size=(10,1), key="-CHECK MAT-", tooltip="")],
                     [sg.Text("Mat. number: ", font="Helvetica 14", size=self.row_size, key="-MAT NUM-", tooltip="", justification="left")],
                     [sg.Text('Name: ', font="Helvetica 14", size=self.row_size, key="-NAME-", tooltip="", justification="left")],
                     [sg.Text("")],
@@ -54,9 +53,6 @@ class GUIClass:
                     [sg.Text("")],
                     [sg.Text("")],
                     [sg.Text('Sheet is unsaved', font="Helvetica 14", size=self.row_size, key="-CURRENT FILE SAVE STATUS-", tooltip="", justification="left", text_color="Red")],
-                    #[sg.Text('', font="Helvetica 14", size=self.row_size, key="-CURRENT FILE SAVED NUMBER-", tooltip="", justification="left", visible=True)],
-                    #[sg.Text('', font="Helvetica 14", size=self.row_size, key="-CURRENT FILE SAVED NAME-", tooltip="", justification="left", visible=True)],
-                    #[sg.Text('', font="Helvetica 14", size=self.row_size, key="-CURRENT FILE SAVED SCORE-", tooltip="", justification="left", visible=True)],
                     [sg.Text("")],
                     [sg.Button('Save sheet in Excel', font="Helvetica 14", size=self.row_size, key="-SAVE IN EXCEL-", tooltip="")],
                     [sg.Text("")],
@@ -86,15 +82,6 @@ class GUIClass:
     def next_sheet_callback(self):
         self.meta_data.increase_index()
         self.update_gui_for_new_sheet()
-    
-    # def create_excel_callback(self, path):
-    #     if self.excel_api.copy_excel_file(path):
-    #         self.update_excel_load_status()
-    #         self.loaded_excel_file = True
-    #     else:
-    #         self.update_excel_load_status(False)
-    #         self.loaded_excel_file = False
-    #     self.check_scans_excel_status()
     
     def load_excel_callback(self, path):
         if self.excel_api.open_existing_file(path):
@@ -139,6 +126,7 @@ class GUIClass:
     def solve_sheets_callback(self):
         self.window["-PREV SHEET-"].update(disabled=True)
         self.window["-NEXT SHEET-"].update(disabled=True)
+        self.window["-SOLVE SHEETS-"].update(disabled=True)
         for index, sheet in enumerate(self.meta_data.scans_list):
             self.meta_data.scan_index = index
             image = cv.imread(self.meta_data.scans_list[index])
@@ -191,12 +179,9 @@ class GUIClass:
 
         cv.namedWindow("Sheet")
         cv.setMouseCallback("Sheet", self.correct_box_callback)
-        while True:
+        while cv.getWindowProperty("Sheet", cv.WND_PROP_VISIBLE) >= 1:
             cv.imshow("Sheet", self.rescale_img(omr_cv.solved_img, self.img_height))
             key = cv.waitKey(1) & 0xFF
-            if key == ord("c"):
-                break
-        cv.destroyWindow("Sheet")
         self.update_gui_for_new_sheet()
     
     def save_in_excel_callback(self):
